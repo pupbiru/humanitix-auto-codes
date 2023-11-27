@@ -1,10 +1,9 @@
 FROM python:3.10-slim
 
-WORKDIR /app
-ADD requirements.txt /app
+ADD requirements.txt /
 RUN pip install -r requirements.txt
 
-ADD get-settings.py /app
-ADD main.py /app
+ADD get-settings.py /
+ADD main.py /
 
 CMD ["python", "main.py"]
