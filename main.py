@@ -8,6 +8,7 @@ import requests
 import sys
 
 from copy import deepcopy
+from hashlib import md5
 from pprint import pprint
 
 def get_usersettings():
@@ -207,6 +208,7 @@ def main():
     except FileNotFoundError:
         state = {}
 
+    codes_hash = md5('\0'.join(usersettings['codes']).encode('utf-8')).hexdigest()
     for event in client.get_events()['events']:
         for prefix in usersettings['prefixes']:
             if event['name'].lower().startswith(prefix.lower()):
@@ -230,14 +232,15 @@ def main():
                     print('  Updating auto discounts...')
                     client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
 
-                if state.setdefault('events', {}).setdefault(event['eventId'], False):
+                this_codes_hash = state.setdefault('events', {}).setdefault(event['eventId'], None)
+                if this_codes_hash == codes_hash:
                     print(f'  Already processed access codes')
                 else:
                     print('  Sending access codes...')
                     # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
                     client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
 
-                state['events'][event['eventId']] = True
+                state['events'][event['eventId']] = codes_hash
                 with open('state.json', 'w') as f:
                     json.dump(state, f, indent=4)
 
