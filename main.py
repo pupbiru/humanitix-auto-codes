@@ -208,11 +208,19 @@ def main():
     except FileNotFoundError:
         state = {}
 
+    now_ts = datetime.datetime.now().timestamp()
     codes_hash = md5('\0'.join(usersettings['codes']).encode('utf-8')).hexdigest()
     for event in client.get_events()['events']:
+
+        this_end_date_ts = datetime.datetime.fromisoformat(event['endDate']).timestamp()
+        if this_end_date_ts < now_ts:
+            continue
+
         for prefix in usersettings['prefixes']:
+
             if not event['name'].lower().startswith(prefix.lower()):
                 continue
+
             print(f'Processing {event["name"]}...')
 
             vip_tickets = [t for t in event['ticketTypes'] if 'vip' in t['name'].lower()]
