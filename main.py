@@ -173,14 +173,12 @@ def main():
                     print(f'Skipping {event["name"]}...')
                     continue
                 print(f'Processing {event["name"]}...')
-                try:
-                    vip_ticket = next(filter(lambda t: t['name'].lower() == 'vip', event['ticketTypes']))
-                except StopIteration:
-                    print('No VIP ticket found')
-                    continue
 
-                client.send_event_discounts_csv(event['eventId'], vip_ticket['_id'], usersettings['codes'])
-                client.send_event_access_codes_csv(event['eventId'], vip_ticket['_id'], usersettings['codes'])
+                vip_tickets = [t for t in event['ticketTypes'] if 'vip' in t['name'].lower()]
+                vip_ticket_ids = ','.join([t['_id'] for t in vip_tickets])
+
+                client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
+                client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
 
                 state['events'][event['eventId']] = True
                 with open('state.json', 'w') as f:
