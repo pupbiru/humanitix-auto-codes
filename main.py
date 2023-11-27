@@ -232,7 +232,6 @@ def main():
 
                 if state.setdefault('events', {}).setdefault(event['eventId'], False):
                     print(f'  Already processed access codes')
-                    continue
                 else:
                     print('  Sending access codes...')
                     # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
