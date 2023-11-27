@@ -25,6 +25,7 @@ def get_token(firebase_api_key, refresh_token):
             'refresh_token': refresh_token,
         },
     )
+    assert res.status_code >= 200 and res.status_code < 300, res.text
     return res.json()
 
 def dt_suffix(d):
@@ -58,6 +59,7 @@ class HumanitixClient:
                 **self.default_headers,
             }
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
 
     def get_event(self, event_id):
@@ -68,6 +70,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
 
     def get_event_discount_codes(self, event_id):
@@ -81,6 +84,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
     
     def get_event_access_codes(self, event_id):
@@ -94,6 +98,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
 
     def send_event_discounts_csv(self, event_id, applies_to, codes):
@@ -116,6 +121,7 @@ class HumanitixClient:
                 'location': (None, 'AU'),
             },
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
 
     def send_event_access_codes_csv(self, event_id, applies_to, codes):
@@ -131,6 +137,7 @@ class HumanitixClient:
                 'enabled': (None, 'true'),
             },
         )
+        assert res.status_code >= 200 and res.status_code < 300, res.text
         return res.json()
 
 def main():
