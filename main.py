@@ -52,6 +52,7 @@ def auto_discount(name_suffix, *ids):
         'discount': 100,
         'discountType': 'percent',
         'appliesTo': list(ids),
+        'maximumUsePerOrder': 1,
         'enabled': True,
     }
 def generate_auto_discounts(**tickets):
