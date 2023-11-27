@@ -211,38 +211,39 @@ def main():
     codes_hash = md5('\0'.join(usersettings['codes']).encode('utf-8')).hexdigest()
     for event in client.get_events()['events']:
         for prefix in usersettings['prefixes']:
-            if event['name'].lower().startswith(prefix.lower()):
-                print(f'Processing {event["name"]}...')
+            if not event['name'].lower().startswith(prefix.lower()):
+                continue
+            print(f'Processing {event["name"]}...')
 
-                vip_tickets = [t for t in event['ticketTypes'] if 'vip' in t['name'].lower()]
-                vip_ticket_ids = ','.join([t['_id'] for t in vip_tickets])
+            vip_tickets = [t for t in event['ticketTypes'] if 'vip' in t['name'].lower()]
+            vip_ticket_ids = ','.join([t['_id'] for t in vip_tickets])
 
-                other_discounts = [i for i in event['autoDiscounts'] if not i['code'].startswith('[AUTO]')]
-                our_discounts = [i for i in generate_auto_discounts(**{t['name']: t['_id'] for t in vip_tickets})]
+            other_discounts = [i for i in event['autoDiscounts'] if not i['code'].startswith('[AUTO]')]
+            our_discounts = [i for i in generate_auto_discounts(**{t['name']: t['_id'] for t in vip_tickets})]
 
-                wanted_discounts =  other_discounts + our_discounts
-                current_discounts_cmp = deepcopy(event['autoDiscounts'])
-                for i in current_discounts_cmp:
-                    del i['_id']
-                    del i['trigger']['_id']
-                    for j in i['trigger']['purchased']:
-                        del j['_id']
+            wanted_discounts =  other_discounts + our_discounts
+            current_discounts_cmp = deepcopy(event['autoDiscounts'])
+            for i in current_discounts_cmp:
+                del i['_id']
+                del i['trigger']['_id']
+                for j in i['trigger']['purchased']:
+                    del j['_id']
 
-                if wanted_discounts != current_discounts_cmp:
-                    print('  Updating auto discounts...')
-                    client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
+            if wanted_discounts != current_discounts_cmp:
+                print('  Updating auto discounts...')
+                client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
 
-                this_codes_hash = state.setdefault('events', {}).setdefault(event['eventId'], None)
-                if this_codes_hash == codes_hash:
-                    print(f'  Already processed access codes')
-                else:
-                    print('  Sending access codes...')
-                    # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
-                    client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
+            this_codes_hash = state.setdefault('events', {}).setdefault(event['eventId'], None)
+            if this_codes_hash == codes_hash:
+                print(f'  Already processed access codes')
+            else:
+                print('  Sending access codes...')
+                # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
+                client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
 
-                state['events'][event['eventId']] = codes_hash
-                with open('state.json', 'w') as f:
-                    json.dump(state, f, indent=4)
+            state['events'][event['eventId']] = codes_hash
+            with open('state.json', 'w') as f:
+                json.dump(state, f, indent=4)
 
     # pprint(client.get_events()['events'][0])
 
