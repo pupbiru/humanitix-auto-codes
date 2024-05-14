@@ -187,7 +187,7 @@ def main():
         usersettings = get_usersettings()
     except FileNotFoundError:
         print('No usersettings.json found', file=sys.stderr)
-        print('  The file must be in the format {"refresh_token": <STRING>, "codes": [...<STRING>], "prefixes": [...<STRING>]}', file=sys.stderr)
+        print('  The file must be in the format {"refresh_token": <STRING>, "codes": [...<STRING>], "patterns": [...<STRING>]}', file=sys.stderr)
         print('  The refresh token may be obtained by pasting the following into the Humanitix producer console:', file=sys.stderr)
         print("  (() => { dbReq = indexedDB.open('firebaseLocalStorageDb'); dbReq.onsuccess = () => { dataReq = dbReq.result.transaction('firebaseLocalStorage').objectStore('firebaseLocalStorage').getAll(); dataReq.onsuccess = () => { console.log(dataReq.result[0].value.stsTokenManager.refreshToken) }; dataReq.onerror = console.error }; dbReq.onerror = console.error })()", file=sys.stderr)
         return
@@ -216,9 +216,22 @@ def main():
         if this_end_date_ts < now_ts:
             continue
 
-        for prefix in usersettings['prefixes']:
+        for pattern in usersettings['patterns']:
+            if isinstance(pattern, str):
+                pattern_re = re.compile(pattern)
+            else:
+                pattern_flags_raw = pattern['flags']
+                pattern_flags = 0
+                for flag_str in pattern_flags_raw:
+                    try:
+                        flag = getattr(re.RegexFlag, flag_str.upper())
+                    except AttributeError:
+                        print(f'INVALID FLAG: {flag_str}')
+                        continue
+                    pattern_flags |= flag
+                pattern_re = re.compile(pattern['pattern'], pattern_flags)
 
-            if not event['name'].lower().startswith(prefix.lower()):
+            if not pattern_re.match(event['name']):
                 continue
 
             print(f'Processing {event["name"]}...')
