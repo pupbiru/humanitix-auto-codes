@@ -183,6 +183,7 @@ class HumanitixClient:
         return res.json()
 
 def main():
+    dryrun = len([i for i in sys.argv if i == '--dry-run' or i == '--dryrun']) > 0
     try:
         usersettings = get_usersettings()
     except FileNotFoundError:
@@ -251,20 +252,27 @@ def main():
                     del j['_id']
 
             if wanted_discounts != current_discounts_cmp:
-                print('  Updating auto discounts...')
-                client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
+                if dryrun:
+                    print('  Would update auto discounts...')
+                else:
+                    print('  Updating auto discounts...')
+                    client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
 
             this_codes_hash = state.setdefault('events', {}).setdefault(event['eventId'], None)
             if this_codes_hash == codes_hash:
                 print(f'  Already processed access codes')
             else:
-                print('  Sending access codes...')
-                # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
-                client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
+                if dryrun:
+                    print('  Would send access codes...')
+                else:
+                    print('  Sending access codes...')
+                    # client.send_event_discounts_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
+                    client.send_event_access_codes_csv(event['eventId'], vip_ticket_ids, usersettings['codes'])
 
             state['events'][event['eventId']] = codes_hash
-            with open('state.json', 'w') as f:
-                json.dump(state, f, indent=4)
+            if not dryrun:
+                with open('state.json', 'w') as f:
+                    json.dump(state, f, indent=4)
 
     # pprint(client.get_events()['events'][0])
 
