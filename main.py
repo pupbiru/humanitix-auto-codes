@@ -33,6 +33,22 @@ class HttpError(Exception):
     def __str__(self):
         return f'<{self.__class__.__name__}: status_code={self.status_code}, text={self.text}>'
 
+def send_request(*args, debug=False, **kwargs):
+    req = requests.Request(*args, **kwargs)
+    sess = requests.Session()
+    prep = sess.prepare_request(req)
+
+    if debug:
+        print('\n'.join((
+            '-----START REQUEST-----',
+            f'{prep.method} {prep.url}',
+            '\n'.join('{}: {}'.format(k, v) for k, v in prep.headers.items()),
+            str(prep.body),
+            '-----END REQUEST-----',
+        )))
+
+    return sess.send(prep)
+
 def get_usersettings():
     with open('usersettings.json', 'r') as f:
         return json.load(f)
@@ -42,7 +58,8 @@ def get_settings():
         return json.load(f)
 
 def get_token(firebase_api_key, refresh_token):
-    res = requests.post(
+    res = send_request(
+        'POST',
         'https://securetoken.googleapis.com/v1/token',
         params={'key': firebase_api_key},
         data={
@@ -95,7 +112,8 @@ class HumanitixClient:
         return custom_strftime('%a {S} %b %Y, %I:%M %p AEDT', datetime.datetime.now())
 
     def get_events(self):
-        res = requests.get(
+        res = send_request(
+            'GET',
             'https://console.humanitix.com/api/events/search',
             params={
                 'page': 1,
@@ -113,7 +131,8 @@ class HumanitixClient:
         return res.json()
 
     def get_event(self, event_id):
-        res = requests.get(
+        res = send_request(
+            'GET',
             f'https://console.humanitix.com/api/events/{event_id}',
             headers={
                 'x-token': self.token,
@@ -124,7 +143,8 @@ class HumanitixClient:
         return res.json()
 
     def get_event_discount_codes(self, event_id):
-        res = requests.get(
+        res = send_request(
+            'GET',
             f'https://console.humanitix.com/api/events/discount-codes/{event_id}',
             params={
                 'page': 1,
@@ -138,7 +158,8 @@ class HumanitixClient:
         return res.json()
     
     def get_event_access_codes(self, event_id):
-        res = requests.get(
+        res = send_request(
+            'GET',
             f'https://console.humanitix.com/api/events/access-codes/{event_id}',
             params={
                 'page': 1,
@@ -152,7 +173,8 @@ class HumanitixClient:
         return res.json()
 
     def send_event_discounts_csv(self, event_id, applies_to, codes):
-        res = requests.put(
+        res = send_request(
+            'PUT',
             f'https://console.humanitix.com/api/events/discount-codes/upload/{event_id}',
             headers={
                 'x-token': self.token,
@@ -175,7 +197,8 @@ class HumanitixClient:
         return res.json()
 
     def send_event_access_codes_csv(self, event_id, applies_to, codes):
-        res = requests.put(
+        res = send_request(
+            'POST',
             f'https://console.humanitix.com/api/events/access-codes/upload/{event_id}',
             headers={
                 'x-token': self.token,
@@ -191,7 +214,8 @@ class HumanitixClient:
         return res.json()
 
     def send_auto_discounts(self, event_id, auto_discounts):
-        res = requests.post(
+        res = send_request(
+            'POST',
             f'https://console.humanitix.com/api/events/{event_id}',
             headers={
                 'x-token': self.token,
