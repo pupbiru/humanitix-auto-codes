@@ -11,6 +11,28 @@ from copy import deepcopy
 from hashlib import md5
 from pprint import pprint
 
+class HttpError(Exception):
+    def __init__(self, res):
+        self.res = res
+
+    def throw_if_not_success(self):
+        self.throw_if_not_bounded_status(200, 299)
+
+    def throw_if_not_bounded_status(self, lower_bound, upper_bound):
+        if self.status_code < lower_bound or self.status_code > upper_bound:
+            raise self
+
+    @property
+    def status_code(self):
+        return self.res.status_code
+
+    @property
+    def text(self):
+        return self.res.text
+
+    def __str__(self):
+        return f'<{self.__class__.__name__}: status_code={self.status_code}, text={self.text}>'
+
 def get_usersettings():
     with open('usersettings.json', 'r') as f:
         return json.load(f)
@@ -28,7 +50,7 @@ def get_token(firebase_api_key, refresh_token):
             'refresh_token': refresh_token,
         },
     )
-    assert res.status_code >= 200 and res.status_code < 300, res.text
+    HttpError(res).throw_if_not_success()
     return res.json()
 
 def dt_suffix(d):
@@ -87,7 +109,7 @@ class HumanitixClient:
                 **self.default_headers,
             }
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
     def get_event(self, event_id):
@@ -98,7 +120,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
     def get_event_discount_codes(self, event_id):
@@ -112,7 +134,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
     
     def get_event_access_codes(self, event_id):
@@ -126,7 +148,7 @@ class HumanitixClient:
                 **self.default_headers,
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
     def send_event_discounts_csv(self, event_id, applies_to, codes):
@@ -149,7 +171,7 @@ class HumanitixClient:
                 'location': (None, 'AU'),
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
     def send_event_access_codes_csv(self, event_id, applies_to, codes):
@@ -165,7 +187,7 @@ class HumanitixClient:
                 'enabled': (None, 'true'),
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
     def send_auto_discounts(self, event_id, auto_discounts):
@@ -179,7 +201,7 @@ class HumanitixClient:
                 'autoDiscounts': auto_discounts,
             },
         )
-        assert res.status_code >= 200 and res.status_code < 300, res.text
+        HttpError(res).throw_if_not_success()
         return res.json()
 
 def main():
