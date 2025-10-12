@@ -7,10 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 
 def get_settings():
-    res = requests.get('https://console.humanitix.com/signin')
-    soup = BeautifulSoup(res.content, features='html.parser')
-    script_content = soup.find('script', string=re.compile('window\.config=')).get_text()
-    settings_json = re.search(r'window\.config=(\{.*\})', script_content).group(1)
+    res = requests.get('https://console.humanitix.com/scripts/browserConfig.js')
+    settings_json = re.search(r'window\.config\s*=\s*(\{.*\})', res.text).group(1)
     return json.loads(settings_json)
 
 def main():
