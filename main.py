@@ -173,6 +173,10 @@ class HumanitixClient:
         HttpError(res).throw_if_not_success()
         return res.json()
 
+    @classmethod
+    def encode_file(cls, data):
+        return {i: ord(bit) for i, bit in enumerate(data)}
+
     def send_event_discounts_csv(self, event_id, applies_to, codes):
         res = send_request(
             'PUT',
@@ -200,15 +204,23 @@ class HumanitixClient:
     def send_event_access_codes_csv(self, event_id, applies_to, codes):
         res = send_request(
             'POST',
-            f'https://console.humanitix.com/api/events/access-codes/upload/{event_id}',
+            f'https://console.humanitix.com/trpc/accessCodes.uploadAccessCodes',
+            params={
+                'batch': 1,
+            },
             headers={
                 'x-token': self.token,
                 **self.default_headers,
             },
-            files={
-                'file': ('vips.csv', '\n'.join(codes), 'text/csv'),
-                'appliesTo': (None, applies_to),
-                'enabled': (None, 'true'),
+            json={
+                0: {
+                    'appliesTo': applies_to,
+                    'enabled': 'true',
+                    'file': self.encode_file('\n'.join(codes)),
+                    'target': {
+                        'eventId': event_id,
+                    },
+                },
             },
         )
         HttpError(res).throw_if_not_success()
@@ -259,7 +271,6 @@ def main():
     now_ts = datetime.datetime.now().timestamp()
     codes_hash = md5('\0'.join(usersettings['codes']).encode('utf-8')).hexdigest()
     for event in client.get_events()['events']:
-
         this_end_date_ts = datetime.datetime.fromisoformat(event['endDate']).timestamp()
         if this_end_date_ts < now_ts:
             continue
