@@ -102,6 +102,7 @@ def generate_auto_discounts(**tickets):
 
 class HumanitixClient:
     default_headers = {
+        'x-event-level-location': 'AU',
         'x-user-level-location': 'AU',
         'x-override-location': 'AU',
     }
