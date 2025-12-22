@@ -106,30 +106,80 @@ class HumanitixClient:
         'x-user-level-location': 'AU',
         'x-override-location': 'AU',
     }
+    events_page_size = 10
+
     def __init__(self, token):
         self.token = token
 
     def get_date(self):
         return custom_strftime('%a {S} %b %Y, %I:%M %p AEDT', datetime.datetime.now())
 
-    def get_events(self):
-        res = send_request(
-            'GET',
-            'https://console.humanitix.com/api/events/search',
-            params={
-                'page': 1,
-                'sortOrder': 'newest',
-                'filter': 'all',
-                'loc': 'AU',
-                'date': self.get_date(),
-            },
-            headers={
-                'x-token': self.token,
-                **self.default_headers,
-            }
-        )
-        HttpError(res).throw_if_not_success()
-        return res.json()
+    # Filters:
+    # all, published, unpublished, past, archived
+    def get_events(self, filters=['published', 'unpublished']):
+        return list(self.get_events_filters_generator(filters))
+        # res = send_request(
+        #     'GET',
+        #     'https://console.humanitix.com/api/events/search',
+        #     params={
+        #         'page': 1,
+        #         'sortOrder': 'newest',
+        #         'filter': 'all',
+        #         'loc': 'AU',
+        #         'date': self.get_date(),
+        #     },
+        #     headers={
+        #         'x-token': self.token,
+        #         **self.default_headers,
+        #     }
+        # )
+        # HttpError(res).throw_if_not_success()
+        # return res.json()
+
+    def get_events_filters_generator(self, filters):
+        # use get_events_generator to yield individual events for all filters
+        # ensuring that they are in order of startDate (an ISO8601 string)
+        filter_gens = [self.get_events_generator(f) for f in filters]
+        filter_iters = [iter(g) for g in filter_gens]
+        filter_nexts = [next(it, None) for it in filter_iters]
+        while any(i is not None for i in filter_nexts):
+            # get the next event with the earliest createdAt
+            this_min = None
+            this_min_idx = None
+            for idx, event in enumerate(filter_nexts):
+                if event is None:
+                    continue
+                if this_min is None or event['createdAt'] < this_min['createdAt']:
+                    this_min = event
+                    this_min_idx = idx
+            yield this_min
+            filter_nexts[this_min_idx] = next(filter_iters[this_min_idx], None)
+
+    def get_events_generator(self, filter):
+        page = 1
+        while True:
+            res = send_request(
+                'GET',
+                'https://console.humanitix.com/api/events/search',
+                params={
+                    'page': page,
+                    'sortOrder': 'newest',
+                    'filter': filter,
+                    'loc': 'AU',
+                    'date': self.get_date(),
+                },
+                headers={
+                    'x-token': self.token,
+                    **self.default_headers,
+                }
+            )
+            HttpError(res).throw_if_not_success()
+            events = res.json()['events']
+            for event in events:
+                yield event
+            if len(events) < self.events_page_size:
+                return
+            page += 1
 
     def get_event(self, event_id):
         res = send_request(
@@ -270,7 +320,7 @@ def main():
 
     now_ts = datetime.datetime.now().timestamp()
     codes_hash = md5('\0'.join(usersettings['codes']).encode('utf-8')).hexdigest()
-    for event in client.get_events()['events']:
+    for event in client.get_events():
         this_end_date_ts = datetime.datetime.fromisoformat(event['endDate']).timestamp()
         if this_end_date_ts < now_ts:
             continue
@@ -332,7 +382,7 @@ def main():
                 with open('state.json', 'w') as f:
                     json.dump(state, f, indent=4)
 
-    # pprint(client.get_events()['events'][0])
+    # pprint(client.get_events()[0])
 
 if __name__ == '__main__':
     main()
