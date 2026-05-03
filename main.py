@@ -42,7 +42,9 @@ def send_request(*args, debug=False, **kwargs):
         print('\n'.join((
             '-----START REQUEST-----',
             f'{prep.method} {prep.url}',
+            '-----START HEADERS-----',
             '\n'.join('{}: {}'.format(k, v) for k, v in prep.headers.items()),
+            '-----START BODY-----',
             str(prep.body),
             '-----END REQUEST-----',
         )))
@@ -160,21 +162,25 @@ class HumanitixClient:
         while True:
             res = send_request(
                 'GET',
-                'https://console.humanitix.com/api/events/search',
+                'https://console.humanitix.com/trpc/events.hostEventSearch',
                 params={
-                    'page': page,
-                    'sortOrder': 'newest',
-                    'filter': filter,
-                    'loc': 'AU',
-                    'date': self.get_date(),
+                    'batch': 1,
+                    'input': json.dumps({0: {
+                        'filter': filter,
+                        'sortOrder': 'newest',
+                        'query': '',
+                        'page': page,
+                        'emailCampaignSearch': False,
+                    }}),
                 },
                 headers={
                     'x-token': self.token,
                     **self.default_headers,
-                }
+                },
             )
             HttpError(res).throw_if_not_success()
-            events = res.json()['events']
+            data_line = json.loads(res.text.splitlines()[-1])
+            events = data_line[0]['result']['data']['events']
             for event in events:
                 yield event
             if len(events) < self.events_page_size:
