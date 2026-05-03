@@ -3,6 +3,7 @@
 import datetime
 import itertools
 import json
+import http.client
 import re
 import requests
 import sys
@@ -10,9 +11,10 @@ import sys
 from copy import deepcopy
 from hashlib import md5
 from pprint import pprint
+from urllib.parse import urlencode, urlparse
 
 class HttpError(Exception):
-    def __init__(self, res):
+    def __init__(self, res: requests.Response | http.client.HTTPResponse):
         self.res = res
 
     def throw_if_not_success(self):
@@ -24,11 +26,21 @@ class HttpError(Exception):
 
     @property
     def status_code(self):
-        return self.res.status_code
+        if isinstance(self.res, requests.Response):
+            return self.res.status_code
+        elif isinstance(self.res, http.client.HTTPResponse):
+            return self.res.status
+        else:
+            raise TypeError("Unsupported response type")
 
     @property
     def text(self):
-        return self.res.text
+        if isinstance(self.res, requests.Response):
+            return self.res.text
+        elif isinstance(self.res, http.client.HTTPResponse):
+            return self.res.read().decode()
+        else:
+            raise TypeError("Unsupported response type")
 
     def __str__(self):
         return f'<{self.__class__.__name__}: status_code={self.status_code}, text={self.text}>'
@@ -50,6 +62,22 @@ def send_request(*args, debug=False, **kwargs):
         )))
 
     return sess.send(prep)
+
+# unused, but kept in case needed in the future
+def send_request_raw(method, url, headers=None, debug=False):
+    if debug:
+        print('\n'.join((
+            '-----START RAW REQUEST-----',
+            f'{method} {url}',
+            '-----START HEADERS-----',
+            '\n'.join('{}: {}'.format(k, v) for k, v in (headers or {}).items()),
+            '-----END RAW REQUEST-----',
+        )))
+    parsed_url = urlparse(url)
+    conn = http.client.HTTPSConnection(parsed_url.netloc)
+    conn.request(method, parsed_url.path, headers=headers or {})
+    return conn.getresponse()
+
 
 def get_usersettings():
     with open('usersettings.json', 'r') as f:
