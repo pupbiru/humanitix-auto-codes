@@ -63,6 +63,17 @@ def send_request(*args, debug=False, **kwargs):
 
     return sess.send(prep)
 
+def parse_trpc_response(res):
+    # a tRPC HTTP batch response is a JSON array with one element per batched
+    # call; we only ever send a single call, keyed '0'
+    # parse the whole body: the body is a single line of JSON, but its strings
+    # may contain characters (e.g. U+2028) that str.splitlines() treats as
+    # line breaks, so splitting the body into lines corrupts it
+    data = res.json()
+    if not isinstance(data, list) or not data or 'result' not in data[0]:
+        raise ValueError(f'Unexpected tRPC response body: {res.text[:200]!r}')
+    return data[0]['result']['data']
+
 # unused, but kept in case needed in the future
 def send_request_raw(method, url, headers=None, debug=False):
     if debug:
@@ -207,8 +218,7 @@ class HumanitixClient:
                 },
             )
             HttpError(res).throw_if_not_success()
-            data_line = json.loads(res.text.splitlines()[-1])
-            events = data_line[0]['result']['data']['events']
+            events = parse_trpc_response(res)['events']
             for event in events:
                 yield event
             if len(events) < self.events_page_size:
