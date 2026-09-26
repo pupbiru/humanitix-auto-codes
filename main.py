@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import datetime
 import itertools
@@ -140,6 +140,18 @@ def generate_auto_discounts(**tickets):
     for i in range(len(tickets)):
         for keys in itertools.combinations(tickets.keys(), i+1):
             yield auto_discount(' & '.join(keys), *[tickets[k] for k in keys])
+
+def strip_discount_ids(discounts):
+    # discounts read back from the API carry database ids that discounts we
+    # generate do not, so strip them before comparing the two
+    stripped = deepcopy(discounts)
+    for discount in stripped:
+        discount.pop('_id', None)
+        trigger = discount.get('trigger') or {}
+        trigger.pop('_id', None)
+        for purchased in trigger.get('purchased') or []:
+            purchased.pop('_id', None)
+    return stripped
 
 class HumanitixClient:
     default_headers = {
@@ -396,19 +408,13 @@ def main():
             our_discounts = [i for i in generate_auto_discounts(**{t['name']: t['_id'] for t in vip_tickets})]
 
             wanted_discounts =  other_discounts + our_discounts
-            current_discounts_cmp = deepcopy(event['autoDiscounts'])
-            for i in current_discounts_cmp:
-                del i['_id']
-                del i['trigger']['_id']
-                for j in i['trigger']['purchased']:
-                    del j['_id']
 
-            if wanted_discounts != current_discounts_cmp:
+            if strip_discount_ids(wanted_discounts) != strip_discount_ids(event['autoDiscounts']):
                 if dryrun:
                     print('  Would update auto discounts...')
                 else:
                     print('  Updating auto discounts...')
-                    client.send_auto_discounts(event['eventId'], other_discounts + our_discounts)
+                    client.send_auto_discounts(event['eventId'], wanted_discounts)
 
             this_codes_hash = state.setdefault('events', {}).setdefault(event['eventId'], None)
             if this_codes_hash == codes_hash:
